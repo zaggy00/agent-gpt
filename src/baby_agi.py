@@ -95,13 +95,17 @@ class BabyAGI(Chain, BaseModel):
 
     def print_task_list(self):
         print("\033[95m\033[1m" + "\n*****TASK LIST*****\n" + "\033[0m\033[0m")
+        if len(self.task_list) > 1:
+            st.write('**Task List:** \n')
         for t in self.task_list:
             print(str(t["task_id"]) + ": " + t["task_name"])
+            if len(self.task_list) > 1:
+                st.write(str(t["task_id"]) + ": " + t["task_name"])
 
     def print_next_task(self, task: Dict):
         print("\033[92m\033[1m" + "\n*****NEXT TASK*****\n" + "\033[0m\033[0m")
-        print(str(task["task_id"]) + ": " + task["task_name"])
-        return (str(task["task_id"]) + ": " + task["task_name"])
+        print(str(task["task_name"]))
+        return (str(task["task_name"]))
 
     def print_task_result(self, result: str):
         print("\033[93m\033[1m" + "\n*****TASK RESULT*****\n" + "\033[0m\033[0m")
@@ -115,12 +119,11 @@ class BabyAGI(Chain, BaseModel):
     def output_keys(self) -> List[str]:
         return []
     
-    @st.cache_data
     def _call(_self, inputs: Dict[str, Any]) -> Dict[str, Any]:
         result_list = []
         """Run the agent."""
         objective = inputs["objective"]
-        first_task = inputs.get("first_task", "Make a todo list")
+        first_task = inputs.get("first_task", f"Make a todo list to accomplish the objective: {objective}")
         _self.add_task({"task_id": 1, "task_name": first_task})
         num_iters = 0
         while True:
@@ -130,7 +133,7 @@ class BabyAGI(Chain, BaseModel):
                 # Step 1: Pull the first task
                 task = _self.task_list.popleft()
                 _self.print_next_task(task)
-                st.write('**Task:** \n')
+                st.write('**Next Task:** \n')
                 st.write(_self.print_next_task(task))
 
                 # Step 2: Execute the task
@@ -139,7 +142,7 @@ class BabyAGI(Chain, BaseModel):
                 )
                 this_task_id = int(task["task_id"])
                 _self.print_task_result(result)
-                st.write('**Result:** \n')
+                st.write('**Result from Task:** \n')
                 st.write(_self.print_task_result(result))
                 result_list.append(result)
 
