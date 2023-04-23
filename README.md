@@ -7,8 +7,8 @@ This is a BabyAGI + SerpAPI tool that uses Langchain's framework. The site is ho
 
 ## To run
 
-Make sure to fill in the API keys for OpenAI and SerpAPI.
 
+Then run the following commands:
 ```
 python -m venv venv
 source venv/bin/activate
@@ -18,6 +18,7 @@ pip install google-search-results
 pip install faiss-cpu > /dev/null
 pip install tiktoken
 pip install streamlit
+pip install python-decouple
 streamlit run agent.py
 
 ```

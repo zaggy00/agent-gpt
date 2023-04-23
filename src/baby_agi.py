@@ -1,109 +1,16 @@
-import os
-os.environ["OPENAI_API_KEY"] = ""
-os.environ["SERPAPI_API_KEY"] = ""
-import streamlit as st
-from collections import deque
-from typing import Dict, List, Optional, Any
-
-from langchain import LLMChain, OpenAI, PromptTemplate
-from langchain.embeddings import OpenAIEmbeddings
-from langchain.llms import BaseLLM
 from langchain.vectorstores.base import VectorStore
 from pydantic import BaseModel, Field
 from langchain.chains.base import Chain
-from langchain.vectorstores import FAISS
-from langchain.docstore import InMemoryDocstore
+from collections import deque
+from typing import Dict, List, Optional, Any
+from langchain.agents import ZeroShotAgent, AgentExecutor
+from src.task_creation_chain import TaskCreationChain
+from src.task_prio_chain import TaskPrioritizationChain
+import streamlit as st
+from langchain import LLMChain
+from langchain.llms import BaseLLM
 
-st.title('Personal AI Assistant')
-
-# Define your embedding model
-embeddings_model = OpenAIEmbeddings()
-# Initialize the vectorstore as empty
-import faiss
-
-embedding_size = 1536
-index = faiss.IndexFlatL2(embedding_size)
-vectorstore = FAISS(embeddings_model.embed_query, index, InMemoryDocstore({}), {})
-
-class TaskCreationChain(LLMChain):
-    """Chain to generates tasks."""
-
-    @classmethod
-    def from_llm(cls, llm: BaseLLM, verbose: bool = True) -> LLMChain:
-        """Get the response parser."""
-        task_creation_template = (
-            "You are an task creation AI that uses the result of an execution agent"
-            " to create new tasks with the following objective: {objective},"
-            " The last completed task has the result: {result}."
-            " This result was based on this task description: {task_description}."
-            " These are incomplete tasks: {incomplete_tasks}."
-            " Based on the result, create new tasks to be completed"
-            " by the AI system that do not overlap with incomplete tasks."
-            " Return the tasks as an array."
-        )
-        prompt = PromptTemplate(
-            template=task_creation_template,
-            input_variables=[
-                "result",
-                "task_description",
-                "incomplete_tasks",
-                "objective",
-            ],
-        )
-        return cls(prompt=prompt, llm=llm, verbose=verbose)
-    
-class TaskPrioritizationChain(LLMChain):
-    """Chain to prioritize tasks."""
-
-    @classmethod
-    def from_llm(cls, llm: BaseLLM, verbose: bool = True) -> LLMChain:
-        """Get the response parser."""
-        task_prioritization_template = (
-            "You are an task prioritization AI tasked with cleaning the formatting of and reprioritizing"
-            " the following tasks: {task_names}."
-            " Consider the ultimate objective of your team: {objective}."
-            " Do not remove any tasks. Return the result as a numbered list, like:"
-            " #. First task"
-            " #. Second task"
-            " Start the task list with number {next_task_id}."
-        )
-        prompt = PromptTemplate(
-            template=task_prioritization_template,
-            input_variables=["task_names", "next_task_id", "objective"],
-        )
-        return cls(prompt=prompt, llm=llm, verbose=verbose)
-    
-from langchain.agents import ZeroShotAgent, Tool, AgentExecutor
-from langchain import OpenAI, SerpAPIWrapper, LLMChain
-
-todo_prompt = PromptTemplate.from_template(
-    "You are a planner who is an expert at coming up with a todo list for a given objective. Come up with a todo list for this objective: {objective}"
-)
-todo_chain = LLMChain(llm=OpenAI(temperature=0), prompt=todo_prompt)
-search = SerpAPIWrapper()
-tools = [
-    Tool(
-        name="Search",
-        func=search.run,
-        description="useful for when you need to answer questions about current events",
-    ),
-    Tool(
-        name="TODO",
-        func=todo_chain.run,
-        description="useful for when you need to come up with todo lists. Input: an objective to create a todo list for. Output: a todo list for that objective. Please be very clear what the objective is!",
-    ),
-]
-
-
-prefix = """You are an AI who performs one task based on the following objective: {objective}. Take into account these previously completed tasks: {context}."""
-suffix = """Question: {task}
-{agent_scratchpad}"""
-prompt = ZeroShotAgent.create_prompt(
-    tools,
-    prefix=prefix,
-    suffix=suffix,
-    input_variables=["objective", "task", "context", "agent_scratchpad"],
-)
+# -----------------helpers
 
 def get_next_task(
     task_creation_chain: LLMChain,
@@ -162,6 +69,10 @@ def execute_task(
     """Execute a task."""
     context = _get_top_tasks(vectorstore, query=objective, k=k)
     return execution_chain.run(objective=objective, context=context, task=task)
+
+
+# ---------------Class-------------
+
 
 class BabyAGI(Chain, BaseModel):
     """Controller model for the BabyAGI agent."""
@@ -278,7 +189,13 @@ class BabyAGI(Chain, BaseModel):
 
     @classmethod
     def from_llm(
-        cls, llm: BaseLLM, vectorstore: VectorStore, verbose: bool = False, **kwargs
+        cls, 
+        prompt: str,
+        tools: list,
+        llm: BaseLLM, 
+        vectorstore: VectorStore, 
+        verbose: bool = False, 
+        **kwargs
     ) -> "BabyAGI":
         """Initialize the BabyAGI Controller."""
         task_creation_chain = TaskCreationChain.from_llm(llm, verbose=verbose)
@@ -299,32 +216,3 @@ class BabyAGI(Chain, BaseModel):
             **kwargs,
         )
     
-
-def get_text():
-    input_text = st.text_input("Type in your prompt below", key="input")
-    return input_text 
-
-user_input = get_text()
-
-OBJECTIVE = user_input
-llm = OpenAI(temperature=0)
-# Logging of LLMChains
-verbose = False
-# If None, will keep on going forever. Customize the number of loops you want it to go through.
-max_iterations: Optional[int] = 2
-baby_agi = BabyAGI.from_llm(
-    llm=llm, vectorstore=vectorstore, verbose=verbose, max_iterations=max_iterations
-)
-
-if (user_input):
-    baby_agi({"objective": OBJECTIVE})
-
-    # Download the file using Streamlit's download_button() function
-    st.download_button(
-        label='Download Results',
-        data=open('output.txt', 'rb').read(),
-        file_name='output.txt',
-        mime='text/plain'
-    )
-
-# baby_agi({"objective": OBJECTIVE})
