@@ -16,11 +16,14 @@ from constants import (
 
 def run_agent(
         user_input, 
-        num_iterations
+        num_iterations,
+        baby_agi_model=BABY_AGI_MODEL_NAME,
+        todo_chaining_model=TODO_CHAIN_MODEL_NAME,
+        embedding_model=EMBEDDING_MODEL_NAME
     ):
 
     # Define your embedding model
-    embeddings_model = OpenAIEmbeddings(model=EMBEDDING_MODEL_NAME)
+    embeddings_model = OpenAIEmbeddings(model=embedding_model)
     # Initialize the vectorstore as empty
     import faiss
 
@@ -32,7 +35,7 @@ def run_agent(
         "You are a planner who is an expert at coming up with a todo list for a given objective. Come up with a todo list for this objective: {objective}"
     )
     todo_chain = LLMChain(
-        llm=OpenAI(temperature=0, model_name=TODO_CHAIN_MODEL_NAME), 
+        llm=OpenAI(temperature=0, model_name=todo_chaining_model), 
         prompt=todo_prompt
     )
     search = SerpAPIWrapper()
@@ -61,7 +64,7 @@ def run_agent(
     )
 
     OBJECTIVE = user_input
-    llm = OpenAI(temperature=0, model_name=BABY_AGI_MODEL_NAME)
+    llm = OpenAI(temperature=0, model_name=baby_agi_model)
     # Logging of LLMChains
     verbose = False
     # If None, will keep on going forever. Customize the number of loops you want it to go through.
