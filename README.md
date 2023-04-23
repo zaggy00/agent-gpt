@@ -5,6 +5,9 @@ This is a BabyAGI + SerpAPI tool that uses Langchain's framework. The site is ho
 
 ---
 
+<img width="1453" alt="image" src="https://user-images.githubusercontent.com/12496987/233852508-088c5ba3-6486-4ec4-b25c-d03f960131ae.png">
+
+
 ## To run
 
 
