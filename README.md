@@ -4,6 +4,7 @@ The Agent creates a Todo list to complete tasks that are required by the user an
 This is a BabyAGI + SerpAPI tool that uses Langchain's framework. The site is hosted by Streamlit.
 
 ---
+Access app here: https://agentgpt.streamlit.app/
 
 <img width="1728" alt="image" src="https://user-images.githubusercontent.com/12496987/233863976-197630e4-b5a5-4d40-bd4f-1c9e33a55715.png">
 
